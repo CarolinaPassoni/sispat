@@ -100,9 +100,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }}>
         <h2 className="text-xl">Defina sua nova senha</h2>
         <p>Use pelo menos 10 caracteres, maiúscula, minúscula, número e símbolo.</p>
-        <input className="text-black p-2 w-full" aria-label="Nova senha" type="password" autoComplete="new-password" required minLength={10} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nova senha" />
+        <input className="w-full rounded-xl border border-slate-500 bg-slate-800 px-4 py-3 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Nova senha" type="password" autoComplete="new-password" required minLength={10} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nova senha" />
         <p role="alert">{errorMessage}</p>
-        <button disabled={isLoading} type="submit">{isLoading ? 'Salvando...' : 'Salvar e continuar'}</button>
+        <button disabled={isLoading} type="submit" className="w-full rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-500 disabled:opacity-50">{isLoading ? 'Salvando...' : 'Salvar e continuar'}</button>
       </form>
     </div>
   );
