@@ -1,4 +1,4 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { pbkdf2Sync, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 // Mesmo formato da implementação do navegador (src/utils/passwordSecurity.ts):
 // `pbkdf2$<iteracoes>$<salt-base64>$<hash-base64>` com PBKDF2/SHA-256.
@@ -51,5 +51,6 @@ export function generateTemporaryPasswordNode(): string {
   const pick = (chars: string, i: number) => chars[bytes[i] % chars.length];
   const required = [pick(upper, 0), pick(lower, 1), pick(nums, 2), pick(special, 3)];
   for (let i = 4; i < 14; i += 1) required.push(pick(all, i));
-  return required.sort((a, b) => a.charCodeAt(0) - b.charCodeAt(0)).join('');
+  for (let i = required.length - 1; i > 0; i--) { const j = randomInt(i + 1); [required[i], required[j]] = [required[j], required[i]]; }
+  return required.join('');
 }

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireAuth } from '../../db/requireAuth.js';
+import { authorize } from '../../db/authorize.js';
 import type { UserAccount, UserProfile } from '../../types';
 
 function toUserProfile(account: UserAccount): UserProfile {
@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const auth = requireAuth(req);
+  const auth = await authorize(req, { allowPasswordChange: true });
   if (!auth.ok) return res.status(auth.status ?? 503).json({ error: auth.error });
   if (!auth.user?.id) return res.status(401).json({ error: 'Token inválido.' });
 

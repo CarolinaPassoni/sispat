@@ -21,6 +21,6 @@ CREATE TABLE "users" (
 
 --> statement-breakpoint
 INSERT INTO "users" ("id", "login", "nome_completo", "cpf", "matricula", "email", "telefone", "cargo", "setor", "role", "situacao", "password_hash", "force_password_change", "tentativas_invalidas", "data_criacao", "ultimo_acesso")
-VALUES ('usr-admin', 'admin', 'Administrador Geral do SISPAT', '000.000.000-00', 'ADM-0000', 'admin@sispat.local', NULL, 'Administrador Geral', 'Administração Central', 'ADMIN', 'Ativo', 'pbkdf2$150000$cq8XxwqGbhlSnTqMnvTuWQ==$/fed4RzGo3i6KVfgjzvrCPfSG2y9qUz6aNMrDzLSV8g=', true, 0, '2025-01-01T00:00:00.000Z', NULL)
+VALUES ('usr-admin', 'admin', 'Administrador Geral do SISPAT', '000.000.000-00', 'ADM-0000', 'admin@sispat.local', NULL, 'Administrador Geral', 'Administração Central', 'ADMIN', 'Ativo', '!UNPROVISIONED-RESET-REQUIRED!', true, 0, '2025-01-01T00:00:00.000Z', NULL)
 ON CONFLICT ("id") DO NOTHING;
 

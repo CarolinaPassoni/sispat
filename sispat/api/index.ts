@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import logoutHandler from '../src/api-handlers/auth/logout.js';
 import loginHandler from '../src/api-handlers/auth/login.js';
 import meHandler from '../src/api-handlers/auth/me.js';
 import changePasswordHandler from '../src/api-handlers/auth/change-password.js';
@@ -38,6 +39,7 @@ type QueryValue = string | string[];
 const ROUTES: Route[] = [
   { pattern: ['auth', 'me'], handler: meHandler },
   { pattern: ['auth', 'login'], handler: loginHandler },
+  { pattern: ['auth', 'logout'], handler: logoutHandler },
   { pattern: ['auth', 'change-password'], handler: changePasswordHandler },
   { pattern: ['auth', 'users'], handler: usersHandler },
   { pattern: ['auth', 'users', ':id'], handler: userByIdHandler },
@@ -103,6 +105,11 @@ function collectQuery(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method || '') && req.headers['x-sispat-request'] !== '1') {
+    return res.status(403).json({ error: 'Origem da requisição inválida.' });
+  }
+
   const rawUrl = typeof req.url === 'string' && req.url ? req.url : '/api/';
   const parsedUrl = new URL(rawUrl, 'https://internal');
   let segments = parsedUrl.pathname.split('/').filter(Boolean);

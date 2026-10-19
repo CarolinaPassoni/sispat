@@ -114,8 +114,8 @@ test('login lookup filters in PostgreSQL using bound parameters and a single row
 
 test('authorization still rejects inactive users and insufficient roles', async () => {
   setup();
-  const token = createToken({ id: 'usr-test', login: 'teste', role: 'ADMIN' })!.token;
-  const req = { headers: { authorization: `Bearer ${token}` } };
+  const token = createToken({ id: 'usr-test', login: 'teste', role: 'ADMIN', passwordHash: 'unused' })!.token;
+  const req = { headers: { cookie: `sispat_session=${token}` } };
   queryRows = text => text.includes('from "users"') ? [userRow('Bloqueado')] : [];
   assert.equal((await authorize(req)).status, 403);
   queryRows = text => text.includes('from "users"') ? [userRow()] : [];
@@ -135,9 +135,9 @@ test('asset pagination uses a stable cursor and the endpoint rejects oversized p
   queryRows = () => [];
   assert.equal((await getPatrimoniosPageDb(2, 'd')).nextCursor, null);
   queryRows = text => text.includes('from "users"') ? [userRow()] : [];
-  const token = createToken({ id: 'usr-test', login: 'teste', role: 'CONSULTOR' })!.token;
+  const token = createToken({ id: 'usr-test', login: 'teste', role: 'CONSULTOR', passwordHash: 'unused' })!.token;
   const res = response();
-  await assets({ method: 'GET', headers: { authorization: `Bearer ${token}` }, query: { limit: '201' } } as any, res as any);
+  await assets({ method: 'GET', headers: { cookie: `sispat_session=${token}` }, query: { limit: '201' } } as any, res as any);
   assert.equal(res.statusCode, 400);
 });
 
@@ -170,4 +170,102 @@ test('the interface retrieves all asset pages and never returns a partial list o
     if (oldStorage) Object.defineProperty(globalThis, 'sessionStorage', oldStorage);
     else delete (globalThis as any).sessionStorage;
   }
+});
+
+test('password fingerprint revokes old sessions and first-access blocks business routes', async () => {
+  setup();
+  const token = createToken({ id: 'usr-test', login: 'teste', role: 'ADMIN', passwordHash: 'unused' })!.token;
+  const req = { headers: { cookie: `sispat_session=${token}` } };
+  queryRows = () => [userRow('Ativo', 'ADMIN')];
+  assert.equal((await authorize(req)).ok, true);
+  queryRows = () => {
+    const row = userRow('Ativo', 'ADMIN');
+    row[Object.keys(getTableColumns(users)).indexOf('forcePasswordChange')] = true;
+    return [row];
+  };
+  assert.equal((await authorize(req)).status, 403);
+  assert.equal((await authorize(req, { allowPasswordChange: true })).ok, true);
+  queryRows = () => {
+    const row = userRow('Ativo', 'ADMIN');
+    row[Object.keys(getTableColumns(users)).indexOf('passwordHash')] = 'changed';
+    return [row];
+  };
+  assert.equal((await authorize(req)).status, 401);
+});
+
+test('cookie session is HttpOnly and no bearer credential is accepted', async () => {
+  setup();
+  const { sessionCookie } = await import('../src/db/session.js');
+  const res = response();
+  sessionCookie(res as any, 'example');
+  assert.match(res.headers['Set-Cookie'], /HttpOnly; SameSite=Strict/);
+  assert.equal(res.headers['Cache-Control'], 'no-store');
+  sessionCookie(res as any, '', 0);
+  assert.match(res.headers['Set-Cookie'], /Max-Age=0/);
+  const token = createToken({ id: 'usr-test', login: 'teste', role: 'ADMIN', passwordHash: 'unused' })!.token;
+  assert.equal((await authorize({ headers: { authorization: `Bearer ${token}` } })).status, 401);
+});
+
+test('router rejects cross-site form writes without custom header', async () => {
+  const { default: router } = await import('../api/index.js');
+  const res = response();
+  await router({ method: 'POST', headers: {}, url: '/api/auth/login', query: {} } as any, res as any);
+  assert.equal(res.statusCode, 403);
+});
+
+test('password change requires current password and rejects blocked accounts', async () => {
+  setup();
+  const { default: change } = await import('../src/api-handlers/auth/change-password.js');
+  const { hashPasswordNode } = await import('../src/db/password.js');
+  const hash = hashPasswordNode('Current123!');
+  const token = createToken({ id: 'usr-test', login: 'teste', role: 'ADMIN', passwordHash: hash })!.token;
+  queryRows = () => {
+    const row = userRow('Ativo', 'ADMIN');
+    row[Object.keys(getTableColumns(users)).indexOf('passwordHash')] = hash;
+    return [row];
+  };
+  const req = { method: 'POST', headers: { cookie: `sispat_session=${token}` }, body: { password: 'Different123!', currentPassword: 'wrong' } };
+  const res = response();
+  await change(req as any, res as any);
+  assert.equal(res.statusCode, 401);
+  assert.ok(!calls.some(c => /insert into/.test(c.text)));
+  queryRows = () => [userRow('Bloqueado', 'ADMIN')];
+  const blocked = response();
+  await change(req as any, blocked as any);
+  assert.equal(blocked.statusCode, 403);
+});
+
+test('login and password change issue protected cookies without returning JWT', async () => {
+  setup();
+  const { default: login } = await import('../src/api-handlers/auth/login.js');
+  const { default: change } = await import('../src/api-handlers/auth/change-password.js');
+  const { hashPasswordNode } = await import('../src/db/password.js');
+  const { requestToken } = await import('../src/db/session.js');
+  const { verifyToken, credentialFingerprint } = await import('../src/db/jwt.js');
+  let hash = hashPasswordNode('Current123!');
+  queryRows = (text, values) => {
+    if (/insert into "users"/.test(text)) {
+      // Drizzle binds columns in schema order; capture persisted hash.
+      hash = values[Object.keys(getTableColumns(users)).indexOf('passwordHash')] as string;
+      return [];
+    }
+    const row = userRow('Ativo', 'ADMIN');
+    row[Object.keys(getTableColumns(users)).indexOf('passwordHash')] = hash;
+    row[Object.keys(getTableColumns(users)).indexOf('forcePasswordChange')] = true;
+    return /from "users"/.test(text) ? [row] : [];
+  };
+  const res = response();
+  await login({ method: 'POST', body: { loginOrEmailOrCpf: 'teste', password: 'Current123!' } } as any, res as any);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.token, undefined);
+  assert.equal(res.body.forcePasswordChange, true);
+  const oldToken = requestToken({ headers: { cookie: res.headers['Set-Cookie'] } });
+  assert.ok(verifyToken(oldToken));
+  const changed = response();
+  await change({ method: 'POST', headers: { cookie: `sispat_session=${oldToken}` }, body: { password: 'Different123!', currentPassword: 'Current123!' } } as any, changed as any);
+  assert.equal(changed.statusCode, 200);
+  const newToken = requestToken({ headers: { cookie: changed.headers['Set-Cookie'] } });
+  assert.notEqual(newToken, oldToken);
+  assert.equal(verifyToken(newToken)?.credential, credentialFingerprint(hash));
+  assert.equal((await authorize({ headers: { cookie: `sispat_session=${oldToken}` } })).status, 401);
 });

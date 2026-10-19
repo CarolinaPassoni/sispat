@@ -13,6 +13,7 @@ export type JwtPayload = {
   role: string;
   iat: number;
   exp: number;
+  credential: string;
 };
 
 function getSecret(): string | null {
@@ -48,18 +49,18 @@ function verify(token: string, secret: string): JwtPayload | null {
   try {
     const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf8')) as JwtPayload;
     if (!payload || typeof payload.sub !== 'string' || typeof payload.exp !== 'number') return null;
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
     return null;
   }
 }
 
-export function createToken(user: { id: string; login: string; role: string }): { token: string; expiresIn: number } | null {
+export function createToken(user: { id: string; login: string; role: string; passwordHash?: string }): { token: string; expiresIn: number } | null {
   const secret = getSecret();
   if (!secret) return null;
   const now = Math.floor(Date.now() / 1000);
-  const payload = { sub: user.id, login: user.login, role: user.role, iat: now, exp: now + JWT_TTL_SECONDS };
+  const payload = { credential: credentialFingerprint(user.passwordHash || ""), sub: user.id, login: user.login, role: user.role, iat: now, exp: now + JWT_TTL_SECONDS };
   return { token: sign(payload, secret), expiresIn: JWT_TTL_SECONDS };
 }
 
@@ -67,4 +68,8 @@ export function verifyToken(token: string): JwtPayload | null {
   const secret = getSecret();
   if (!secret) return null;
   return verify(token, secret);
+}
+
+export function credentialFingerprint(hash: string): string {
+  return createHmac('sha256', getSecret() || '').update('credential:' + hash).digest('base64url');
 }

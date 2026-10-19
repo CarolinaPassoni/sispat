@@ -41,7 +41,7 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [inventarioSessao, setInventarioSessao] = useState<InventarioSessao>(storage.getInventarioSessao());
   const [currentUser, setCurrentUser] = useState<UserProfile>(storage.getCurrentUser());
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(!storage.isLoggedIn());
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(!storage.isLoggedIn() || !!storage.getCurrentUser().forcePasswordChange);
 
   // Modal & Drawer States
   const [selectedAssetForDetail, setSelectedAssetForDetail] = useState<Patrimonio | null>(null);

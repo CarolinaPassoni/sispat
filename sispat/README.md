@@ -22,7 +22,7 @@ O administrador pode:
 ## Primeiro acesso
 
 - Login: `admin`
-- Senha temporária: `Admin#2026!SisPat`
+- Defina uma senha administrativa exclusiva antes de disponibilizar o sistema. Use o procedimento em AUTH_SECURITY.md.
 
 No primeiro acesso o sistema exige a troca da senha temporária.
 
@@ -104,5 +104,5 @@ O usuário `admin` é mantido para que o sistema continue acessível.
 
 ## Persistência
 
-A versão 3.1 continua funcionando em modo local (`localStorage`) por compatibilidade. Para vários computadores compartilharem a mesma base em tempo real, a migração integral para PostgreSQL ainda é a próxima etapa arquitetural recomendada.
+Esta versão exige PostgreSQL/Neon para autenticação e dados centrais. Consulte AUTH_SECURITY.md antes da atualização.
 

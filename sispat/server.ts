@@ -4,7 +4,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { verifyToken } from "./src/db/jwt";
+import { authorize } from "./src/db/authorize";
+import logoutHandler from "./src/api-handlers/auth/logout";
 import loginHandler from "./src/api-handlers/auth/login";
 import meHandler from "./src/api-handlers/auth/me";
 import changePasswordHandler from "./src/api-handlers/auth/change-password";
@@ -32,6 +33,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "10mb" }));
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers['x-sispat-request'] !== '1') {
+    res.status(403).json({ error: 'Origem da requisição inválida.' }); return;
+  }
+  next();
+});
 app.disable("x-powered-by");
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -41,22 +49,9 @@ app.use((_req, res, next) => {
   next();
 });
 
-const requireInternalApiKey: express.RequestHandler = (req, res, next) => {
-  // JWT Bearer (autenticação central) tem prioridade sobre a chave legada.
-  const authHeader = req.header("authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const payload = verifyToken(authHeader.slice("Bearer ".length).trim());
-    if (payload) return next();
-    return res.status(401).json({ error: "Token inválido ou expirado." });
-  }
-
-  const expected = process.env.SISPAT_API_KEY;
-  if (!expected) {
-    if (process.env.NODE_ENV === "production") return res.status(503).json({ error: "SISPAT_API_KEY não configurada no servidor." });
-    return next();
-  }
-  const provided = req.header("x-sispat-api-key");
-  if (!provided || provided !== expected) return res.status(401).json({ error: "Credencial interna inválida." });
+const requireInternalApiKey: express.RequestHandler = async (req, res, next) => {
+  const auth = await authorize(req);
+  if (!auth.ok) { res.status(auth.status || 401).json({ error: auth.error }); return; }
   next();
 };
 
@@ -81,6 +76,7 @@ const mountApiHandler = (
 };
 
 mountApiHandler("post", "/api/auth/login", loginHandler);
+mountApiHandler("post", "/api/auth/logout", logoutHandler);
 mountApiHandler("get", "/api/auth/me", meHandler);
 mountApiHandler("post", "/api/auth/change-password", changePasswordHandler);
 mountApiHandler("get", "/api/auth/users", usersHandler);

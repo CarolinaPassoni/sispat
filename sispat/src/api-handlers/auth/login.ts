@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyPasswordNode, hashPasswordNode } from '../../db/password.js';
+import { sessionCookie } from '../../db/session.js';
 import { createToken } from '../../db/jwt.js';
 import type { UserAccount, UserProfile } from '../../types';
 
@@ -85,13 +86,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     account.ultimoAcesso = new Date().toISOString();
     await upsertUserDb(account);
 
-    const tokenResult = createToken({ id: account.id, login: account.login, role: account.role });
+    const tokenResult = createToken({ id: account.id, login: account.login, role: account.role, passwordHash: account.passwordHash });
     if (!tokenResult) {
       return res.status(503).json({ error: 'JWT_SECRET não configurada no servidor.' });
     }
 
+    sessionCookie(res, tokenResult.token);
     return res.json({
-      token: tokenResult.token,
       expiresIn: tokenResult.expiresIn,
       user: toUserProfile(account),
       forcePasswordChange: account.forcePasswordChange,

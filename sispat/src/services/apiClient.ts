@@ -1,9 +1,6 @@
 import type { Patrimonio, Emprestimo, Manutencao, Movimentacao, InventarioSessao, AuditLog, UserAccount, UserProfile, UserRole, SectorItem } from '../types';
 
-// Cliente HTTP da API central (JWT). O token é mantido em sessionStorage
-// (dados de sessão — permitido). Nenhum dado de negócio é gravado
-// localmente; o Neon é a única fonte de verdade.
-
+// Sessão em cookie HttpOnly, enviado somente à mesma origem.
 export const TOKEN_KEY = 'sispat_jwt_token_v40';
 export const API_BASE = '';
 
@@ -20,18 +17,10 @@ export class ApiRequestError extends Error {
   }
 }
 
-export function getAuthToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY);
-}
-
-export function setAuthToken(token: string | null) {
-  if (token) sessionStorage.setItem(TOKEN_KEY, token);
-  else sessionStorage.removeItem(TOKEN_KEY);
-}
-
-export function clearAuthToken() {
-  sessionStorage.removeItem(TOKEN_KEY);
-}
+export function getAuthToken(): string | null { return null; }
+export function setAuthToken(_token: string | null) { sessionStorage.removeItem(TOKEN_KEY); }
+export function clearAuthToken() { sessionStorage.removeItem(TOKEN_KEY); }
+export async function apiLogout() { await apiRequest('/api/auth/logout', { method: 'POST' }); }
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -48,7 +37,7 @@ async function apiRequest<T>(
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? 20000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Sispat-Request': '1' };
   if (options.auth !== false) {
     const token = getAuthToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -57,6 +46,7 @@ async function apiRequest<T>(
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
+      credentials: 'same-origin',
       method: options.method ?? 'GET',
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -88,7 +78,7 @@ async function apiRequest<T>(
 }
 
 export type ApiLoginResponse = {
-  token: string;
+  token?: string;
   expiresIn: number;
   user: UserProfile;
   forcePasswordChange: boolean;
@@ -109,10 +99,10 @@ export async function apiMe(): Promise<{ user: UserProfile }> {
   return apiRequest<{ user: UserProfile }>('/api/auth/me');
 }
 
-export async function apiChangePassword(password: string): Promise<{ success: boolean }> {
+export async function apiChangePassword(password: string, currentPassword: string): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>('/api/auth/change-password', {
     method: 'POST',
-    body: { password },
+    body: { password, currentPassword },
   });
 }
 

@@ -49,6 +49,7 @@ import {
   apiGetAuditLogs,
   apiSaveAuditLog,
   apiDeleteAuditLog,
+  apiLogout,
   setAuthToken,
   getAuthToken as getCentralToken,
   clearAuthToken as clearCentralToken,
@@ -698,14 +699,14 @@ export class StorageService {
   }
 
   // Change Password by Logged-in User (or Forced First-Time Change)
-  async changePassword(userId: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+  async changePassword(userId: string, newPassword: string, currentPassword: string): Promise<{ success: boolean; message?: string }> {
     const strengthError = validatePasswordStrength(newPassword);
     if (strengthError) return { success: false, message: strengthError };
 
     // Central-only: o servidor valida força e igualdade à senha atual e grava o
     // novo hash no Neon (POST /api/auth/change-password). Não há fallback local.
     try {
-      await apiChangePassword(newPassword);
+      await apiChangePassword(newPassword, currentPassword);
       await this.addAuditLogInternal({
         id: 'log-' + Date.now(), dataHora: new Date().toISOString(), usuarioNome: this.getCurrentUser()?.name || userId,
         usuarioPerfil: this.getCurrentUser()?.role || 'VISITANTE', acao: 'Troca de Senha Realizada (Central)', entidade: 'Usuário', entidadeId: userId,
@@ -809,7 +810,7 @@ export class StorageService {
     // localStorage/IndexedDB — se a API falhar, o login falha.
     try {
       const central = await apiLogin(loginOrEmailOrCpf, passwordInput);
-      setAuthToken(central.token);
+      setAuthToken(null);
       const profile = buildProfileFromUser(central.user);
 
       // Sessão (não cadastro): token e perfil autenticado ficam na sessão.
@@ -842,6 +843,7 @@ export class StorageService {
   }
 
   async logout() {
+    await apiLogout();
     const user = this.getCurrentUser();
     if (user) {
       // Best-effort: o logout não pode ficar pendurado se o banco central

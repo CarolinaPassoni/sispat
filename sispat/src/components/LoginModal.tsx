@@ -34,6 +34,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
   const [loginInput, setLoginInput] = useState('admin');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pendingUser, setPendingUser] = useState<UserProfile | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -77,6 +79,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         setErrorMessage(result.message || 'Falha na autenticação. Verifique os dados fornecidos.');
         return;
       }
+      if (result.forcePasswordChange) { setPendingUser(result.user); return; }
       onLoginSuccess(result.user);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Falha ao validar a credencial neste navegador.');
@@ -84,6 +87,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setIsLoading(false);
     }
   };
+
+  if (pendingUser) return (
+    <div className="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center text-white">
+      <form className="p-8 space-y-4 max-w-md" onSubmit={async e => {
+        e.preventDefault(); setIsLoading(true); setErrorMessage('');
+        try {
+          const result = await storageService.changePassword(pendingUser.id, newPassword, password);
+          if (!result.success) { setErrorMessage(result.message || 'Falha ao alterar senha.'); return; }
+          onLoginSuccess({ ...pendingUser, forcePasswordChange: false });
+        } finally { setIsLoading(false); }
+      }}>
+        <h2 className="text-xl">Defina sua nova senha</h2>
+        <p>Use pelo menos 10 caracteres, maiúscula, minúscula, número e símbolo.</p>
+        <input className="text-black p-2 w-full" aria-label="Nova senha" type="password" autoComplete="new-password" required minLength={10} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nova senha" />
+        <p role="alert">{errorMessage}</p>
+        <button disabled={isLoading} type="submit">{isLoading ? 'Salvando...' : 'Salvar e continuar'}</button>
+      </form>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fade-in">
@@ -240,7 +262,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-2xl text-xs text-blue-200/90 flex items-start gap-2.5">
             <Key className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <p className="text-[11px] leading-relaxed">
-              <strong>Esqueceu a senha?</strong> Solicite a <strong>Redefinição de Senha</strong> ao Administrador Geral (Admin → Usuários → Redefinir senha). A nova senha gerada já funciona no próximo acesso, sem troca obrigatória.
+              <strong>Esqueceu a senha?</strong> Solicite a <strong>Redefinição de Senha</strong> ao Administrador Geral (Admin → Usuários → Redefinir senha). A senha temporária deverá ser alterada no próximo acesso.
             </p>
           </div>
 
