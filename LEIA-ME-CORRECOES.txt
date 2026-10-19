@@ -1,0 +1,17 @@
+CORREÇÕES SISPAT PARA VERCEL
+Base: Dionata1/sispat-public-controle-patrtimonial
+Branch: correcao-postgresql-multicomputador
+Commit de origem: e4edcd5af39d8fbaefbcabf96828a09a38ca2d39
+
+A pasta sispat contém o código completo corrigido. Não inclui credenciais nem banco.
+O arquivo correcoes-vercel.patch contém somente as alterações sobre o commit de origem.
+Para um responsável técnico: git apply --check correcoes-vercel.patch e git apply correcoes-vercel.patch na raiz do repositório original.
+
+Validação local: sete testes de regressão passaram, TypeScript e build passaram.
+O build avisa que o pacote principal da interface é grande; otimização de carregamento permanece pendente.
+Os testes substituem o transporte PostgreSQL e não acessam um banco real.
+O diagnóstico sem variáveis retorna falha corretamente. Não houve migration, teste no Neon real ou deploy.
+
+A integração GitHub retornou 403 (sem permissão de escrita), portanto as alterações ainda não estão no GitHub nem em produção.
+Para publicar, revise os arquivos e o guia VERCEL_DEPLOYMENT_CHECKLIST.md, aplique as mudanças no repositório e valide o banco e as variáveis no ambiente correto.
+A listagem de patrimônios agora usa páginas; a interface foi atualizada para buscar todas. Integrações externas devem seguir nextCursor.
