@@ -10,20 +10,24 @@ export function hashPasswordNode(password: string, iterations = 150000): string 
 }
 
 export function verifyPasswordNode(password: string, stored: string): { valid: boolean; needsMigration: boolean } {
-  if (typeof stored !== 'string' || !stored.startsWith('pbkdf2$')) {
+  if (!stored || stored === '!UNPROVISIONED-RESET-REQUIRED!') {
+    return { valid: false, needsMigration: false };
+  }
+  if (!stored.startsWith('pbkdf2$')) {
     return { valid: stored === password, needsMigration: stored === password };
   }
 
   const parts = stored.split('$');
-  if (parts.length < 4) return { valid: false, needsMigration: false };
+  if (parts.length !== 4) return { valid: false, needsMigration: false };
 
   const [, iterText, saltB64, expectedB64] = parts;
   const iterations = Number(iterText);
-  if (!iterations || !saltB64 || !expectedB64) return { valid: false, needsMigration: false };
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 1000000 || !saltB64 || !expectedB64) return { valid: false, needsMigration: false };
 
   try {
     const salt = Buffer.from(saltB64, 'base64');
     const expected = Buffer.from(expectedB64, 'base64');
+    if (salt.length !== 16 || expected.length !== 32) return { valid: false, needsMigration: false };
     const actual = pbkdf2Sync(password, salt, iterations, expected.length, 'sha256');
     const sameLength = actual.length === expected.length;
     return { valid: sameLength && timingSafeEqual(actual, expected), needsMigration: false };

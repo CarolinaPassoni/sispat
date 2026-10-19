@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const items = await getAllAuditLogsDb();
       return res.json({ auditLogs: items });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await insertAuditLogDb(validated.data as AuditLog);
       return res.json({ status: 'success' });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 

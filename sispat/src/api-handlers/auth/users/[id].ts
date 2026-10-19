@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await deleteUserDb(id);
       return res.json({ status: 'success' });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await upsertUserDb(updated);
       return res.json({ user: publicUserOf(updated) });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 

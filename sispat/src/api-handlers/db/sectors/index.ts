@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const items = await getAllSectorsDb();
       return res.json({ sectors: items });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await upsertSectorDb(item);
       return res.json({ sector: item });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 

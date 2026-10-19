@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const all = await listUsersDb();
       return res.json({ users: all.map(publicUserOf) });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 
@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await upsertUserDb(account);
       return res.status(201).json({ user: publicUserOf(account), tempPassword });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || String(error) });
+      return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
     }
   }
 

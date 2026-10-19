@@ -98,6 +98,6 @@ export async function authorize(req: RequestLike, options?: AuthorizeOptions): P
       },
     };
   } catch (error: any) {
-    return { ok: false, status: 500, error: error.message || String(error) };
+    return { ok: false, status: 500, error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' };
   }
 }

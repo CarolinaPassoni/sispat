@@ -40,6 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     return res.json({ user: toUserProfile(account) });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || String(error) });
+    return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
   }
 }

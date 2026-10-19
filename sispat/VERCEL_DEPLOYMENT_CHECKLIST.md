@@ -4,6 +4,7 @@ A interface React/Vite e a API em `api/index.ts` usam PostgreSQL/Neon como banco
 
 ## Configuração obrigatória
 
+- Root Directory: `sispat` (o aplicativo não está na raiz do repositório).
 - Framework: Vite; Build Command: `npm run build`; Output Directory: `dist`.
 - Cadastre `DATABASE_URL` e `JWT_SECRET` em Settings > Environment Variables, nos ambientes necessários. Não use prefixo `VITE_` para segredos.
 - No Neon, use a URL de conexão com pooling para a aplicação. Mantenha a configuração TLS fornecida pelo Neon.
@@ -20,7 +21,7 @@ Criar o banco Neon não cria as tabelas. O build não aplica migrations automati
 3. Execute `npm ci`, `npm run lint`, `npm run test:deployment` e `npm run build`.
 4. Execute `npm run deploy:check`: ele apenas testa conexão, tabelas/colunas e presença das variáveis, sem alterar dados.
 5. Se houver migrations pendentes, execute `npm run db:migrate`. Não use `db:push` como reparo automático em produção. Se já houver tabelas sem histórico Drizzle, concilie a estrutura e o histórico antes de migrar.
-6. Repita `npm run deploy:check`. A primeira migration de usuários cadastra o administrador inicial; troque a senha inicial imediatamente.
+6. Repita `npm run deploy:check`. A primeira migration de usuários cria uma conta sem senha utilizável. Provisione o administrador conforme AUTH_SECURITY.md antes do primeiro login.
 
 ## Verificação após publicar
 
@@ -29,3 +30,10 @@ Criar o banco Neon não cria as tabelas. O build não aplica migrations automati
 - A listagem `/api/db/patrimonios` usa `limit` (1 a 200, padrão 100) e `cursor`. A interface busca todas as páginas. Consumidores externos precisam seguir `nextCursor` até `null`.
 - A paginação não é um snapshot: alterações simultâneas podem exigir atualizar a lista. A interface ainda mantém os registros carregados em memória.
 - Monitore falhas e latência antes de liberar aos usuários.
+
+## Pendências que exigem acesso ao ambiente
+
+- Confirmar repositório CarolinaPassoni/sispat, branch main e commit publicado.
+- Configurar limitação distribuída de tentativas no Firewall da Vercel para POST /api/auth/login. O bloqueio por conta existente não substitui esse controle.
+- Validar certificado TLS do banco e usar conexão Neon com pooling. Certificados privados exigem configuração explícita da autoridade certificadora.
+- Confirmar separação entre bancos de preview e produção.

@@ -30,6 +30,9 @@ export async function hashPassword(password: string, iterations = 150000): Promi
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<{ valid: boolean; needsMigration: boolean }> {
+  if (!stored || stored === '!UNPROVISIONED-RESET-REQUIRED!') {
+    return { valid: false, needsMigration: false };
+  }
   if (!stored.startsWith('pbkdf2$')) {
     // Compatibilidade temporária para contas antigas. Após login correto, a senha é migrada.
     return { valid: stored === password, needsMigration: stored === password };

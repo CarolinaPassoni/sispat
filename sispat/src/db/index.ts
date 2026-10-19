@@ -11,6 +11,15 @@ function createDrizzle(pool: pg.Pool) {
   return drizzle(pool, { schema });
 }
 
+// pg may override the ssl object when sslmode is present in the URL.
+// Enforce certificate verification in production even for legacy sslmode=require URLs.
+export function databaseConnectionString(value: string): string {
+  if (process.env.NODE_ENV !== 'production') return value;
+  const url = new URL(value);
+  for (const key of ['sslmode', 'uselibpqcompat']) url.searchParams.delete(key);
+  return url.toString();
+}
+
 export function getDb(): ReturnType<typeof createDrizzle> {
   if (!globalForDb.__sispatDb) {
     if (!process.env.DATABASE_URL) {
@@ -20,14 +29,14 @@ export function getDb(): ReturnType<typeof createDrizzle> {
     // evitar exaustão de conexões no PostgreSQL.
     if (!globalForDb.__sispatPool) {
       globalForDb.__sispatPool = new pg.Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString: databaseConnectionString(process.env.DATABASE_URL),
         max: 3,
         connectionTimeoutMillis: 5000,
         idleTimeoutMillis: 10000,
         query_timeout: 10000,
         allowExitOnIdle: true,
         ssl: process.env.NODE_ENV === 'production'
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true }
           : false,
       });
     }

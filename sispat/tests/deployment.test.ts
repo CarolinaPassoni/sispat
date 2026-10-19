@@ -269,3 +269,59 @@ test('login and password change issue protected cookies without returning JWT', 
   assert.equal(verifyToken(newToken)?.credential, credentialFingerprint(hash));
   assert.equal((await authorize({ headers: { cookie: `sispat_session=${oldToken}` } })).status, 401);
 });
+
+
+test('unprovisioned administrator marker never authenticates on server or browser', async () => {
+  const { verifyPasswordNode, hashPasswordNode } = await import('../src/db/password.js');
+  const { verifyPassword } = await import('../src/utils/passwordSecurity.js');
+  const marker = '!UNPROVISIONED-RESET-REQUIRED!';
+  assert.equal(verifyPasswordNode(marker, marker).valid, false);
+  assert.equal((await verifyPassword(marker, marker)).valid, false);
+  assert.equal(verifyPasswordNode('', '').valid, false);
+  const hash = hashPasswordNode('Exclusive123!');
+  assert.equal(verifyPasswordNode('Exclusive123!', hash).valid, true);
+  assert.equal(verifyPasswordNode('wrong', hash).valid, false);
+  setup();
+  const { default: login } = await import('../src/api-handlers/auth/login.js');
+  queryRows = text => {
+    const row = userRow('Ativo', 'ADMIN');
+    row[Object.keys(getTableColumns(users)).indexOf('passwordHash')] = marker;
+    return text.includes('from "users"') ? [row] : [];
+  };
+  const res = response();
+  await login({ method: 'POST', body: { loginOrEmailOrCpf: 'admin', password: marker } } as any, res as any);
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.headers['Set-Cookie'], undefined);
+});
+
+test('production database URL cannot override certificate verification', async () => {
+  const { databaseConnectionString } = await import('../src/db/index.js');
+  const previous = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = 'production';
+    const url = new URL(databaseConnectionString('postgresql://user:pass@host/db?sslmode=no-verify&uselibpqcompat=true&application_name=sispat'));
+    assert.equal(url.searchParams.has('sslmode'), false);
+    assert.equal(url.searchParams.has('uselibpqcompat'), false);
+    assert.equal(url.searchParams.get('application_name'), 'sispat');
+  } finally {
+    if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous;
+  }
+});
+
+test('login errors do not expose SQL details or account status', async () => {
+  setup();
+  const { default: login } = await import('../src/api-handlers/auth/login.js');
+  const req = { method: 'POST', body: { loginOrEmailOrCpf: 'teste', password: 'wrong' } };
+  const missing = response();
+  await login(req as any, missing as any);
+  queryRows = text => text.includes('from "users"') ? [userRow('Bloqueado')] : [];
+  const blocked = response();
+  await login(req as any, blocked as any);
+  assert.equal(missing.statusCode, blocked.statusCode);
+  assert.deepEqual(missing.body, blocked.body);
+  queryRows = text => { if (text.includes('from "users"')) throw new Error('private SQL details'); return []; };
+  const failure = response();
+  await login(req as any, failure as any);
+  assert.equal(failure.statusCode, 500);
+  assert.ok(!JSON.stringify(failure.body).includes('private SQL'));
+});

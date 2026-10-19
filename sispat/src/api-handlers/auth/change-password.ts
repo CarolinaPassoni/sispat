@@ -49,6 +49,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sessionCookie(res, issued.token);
     return res.json({ success: true });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || String(error) });
+    return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
   }
 }

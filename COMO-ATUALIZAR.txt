@@ -1,0 +1,12 @@
+Correções validadas: TypeScript, build e 15 testes.
+Base: CarolinaPassoni/sispat, commit 8ac863499b96b201131ee3f176cd46a68506d53b.
+
+1. Substitua os arquivos do repositório pelos deste ZIP, preservando a pasta sispat.
+2. Na Vercel, confirme Root Directory = sispat, build npm run build e output dist.
+3. Confirme DATABASE_URL e JWT_SECRET no ambiente correto, sem divulgá-los.
+4. Execute deploy:check; se faltarem migrations, confira o banco e backup antes de aplicá-las.
+5. Provisione o administrador conforme sispat/AUTH_SECURITY.md. O marcador de conta não provisionada agora é rejeitado.
+6. Publique e valide login, troca de senha e permissões com conta de teste.
+7. Configure limite distribuído de tentativas no Firewall para POST /api/auth/login.
+
+O ZIP não contém credenciais, node_modules ou dist. Nenhuma alteração foi enviada ao GitHub ou publicada na Vercel por esta sessão.

@@ -53,16 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw dbError;
     }
 
-    if (!account) {
-      return res.status(401).json({
-        error: 'Usuário não encontrado. Entre em contato com o Administrador Geral do SISPAT para cadastramento de conta.',
-      });
-    }
-    if (account.situacao === 'Inativo') {
-      return res.status(403).json({ error: 'Conta inativa. Entre em contato com o Administrador Geral para ativá-la.' });
-    }
-    if (account.situacao === 'Bloqueado') {
-      return res.status(403).json({ error: 'Conta bloqueada por motivos de segurança. Contate o Administrador Geral para desbloqueio.' });
+    if (!account || account.situacao !== 'Ativo') {
+      return res.status(401).json({ error: 'Usuário ou senha inválidos, ou acesso indisponível.' });
     }
 
     const check = verifyPasswordNode(password, account.passwordHash);
@@ -76,10 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       account.tentativasInvalidas = (account.tentativasInvalidas || 0) + 1;
       if (account.tentativasInvalidas >= 5) account.situacao = 'Bloqueado';
       await upsertUserDb(account);
-      const message = account.situacao === 'Bloqueado'
-        ? 'Conta bloqueada por exceder 5 tentativas com senha inválida. Solicite desbloqueio ao Administrador Geral.'
-        : `Senha incorreta. (${account.tentativasInvalidas}/5 tentativas).`;
-      return res.status(401).json({ error: message });
+      return res.status(401).json({ error: 'Usuário ou senha inválidos, ou acesso indisponível.' });
     }
 
     account.tentativasInvalidas = 0;
@@ -98,6 +87,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forcePasswordChange: account.forcePasswordChange,
     });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || String(error) });
+    return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
   }
 }

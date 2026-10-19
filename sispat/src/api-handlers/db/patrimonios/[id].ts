@@ -25,6 +25,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await deletePatrimonioDb(id);
     return res.json({ status: 'success' });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || String(error) });
+    return res.status(500).json({ error: 'Não foi possível concluir a operação. Tente novamente mais tarde.' });
   }
 }
